@@ -24,14 +24,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       # 실행 간 state.json 유지 (중복 알림 방지, 연속 오류 횟수 기록)
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         with:
           path: state.json
           key: state-${{ github.run_id }}
@@ -50,7 +50,7 @@ jobs:
             *) python check.py ;;
           esac
 
-      - uses: actions/cache/save@v4
+      - uses: actions/cache/save@v6
         if: always() && hashFiles('state.json') != ''
         with:
           path: state.json
