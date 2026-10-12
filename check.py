@@ -171,9 +171,11 @@ def main():
 
     prev = state.get("available", {})
     for k, r in result.items():
+        stay = f"{fmt_date(r['checkin'])} → {fmt_date(r['checkout'])} · {r['room']}"
         if r["available"] and not prev.get(k):
-            notify(f"🎉 [{cfg['name']}] 예약 가능!\n"
-                   f"{fmt_date(r['checkin'])} → {fmt_date(r['checkout'])} · {r['room']}\n{r['url']}")
+            notify(f"🎉 [{cfg['name']}] 예약 가능!\n{stay}\n{r['url']}")
+        elif not r["available"] and prev.get(k):
+            notify(f"🔒 [{cfg['name']}] 다시 마감됐어요\n{stay}")
 
     state["available"] = {k: r["available"] for k, r in result.items()}
     state["checkedAt"] = datetime.now(KST).isoformat(timespec="seconds")
