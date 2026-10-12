@@ -130,10 +130,15 @@ def fmt_date(iso):
     return f"{d.month}/{d.day}({'월화수목금토일'[d.weekday()]})"
 
 
+def room_label(result, r):
+    """객실이 여러 개일 때만 ' · 객실명'을 붙임."""
+    return f" · {r['room']}" if len({x["room"] for x in result.values()}) > 1 else ""
+
+
 def notify_changes(cfg, prev, result, notify):
     """이전 상태와 비교해 열림(🎉)/다시 마감(🔒)을 알림."""
     for k, r in result.items():
-        stay = f"{fmt_date(r['checkin'])} → {fmt_date(r['checkout'])} · {r['room']}"
+        stay = f"{fmt_date(r['checkin'])} → {fmt_date(r['checkout'])}{room_label(result, r)}"
         if r["available"] and not prev.get(k):
             notify(f"🎉 [{cfg['name']}] 예약 가능!\n{stay}\n{r['url']}")
         elif not r["available"] and prev.get(k):
@@ -183,7 +188,7 @@ def main():
 
     if mode in ("--test", "--dry"):
         lines = [f"🔎 [{cfg['name']}] 현재 상태"]
-        lines += [f"{'🟢' if r['available'] else '⚪'} {fmt_date(r['checkin'])} {r['room']}"
+        lines += [f"{'🟢' if r['available'] else '⚪'} {fmt_date(r['checkin'])}{room_label(result, r)}"
                   for r in result.values()]
         if not result:
             lines.append("감시할 날짜가 남아있지 않습니다.")
