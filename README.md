@@ -28,7 +28,8 @@ GitHub Actions에서 돌아가므로 PC를 꺼도 동작합니다. 추가 패키
 2. Settings → Secrets and variables → Actions → New repository secret
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
-3. Actions 탭 → `pension-watch` → **Run workflow**, mode에 `--test` 입력 → 텔레그램에 현재 상태가 오면 성공
+3. Actions 탭 → `pension-watch` → **Run workflow**, mode에서 `--test` 선택 → 텔레그램에 현재 상태가 오면 성공
+   - mode `--demo` + dates(예: `2026-11-03,2026-11-07`)로 실행하면 지정 날짜 중 열린 날은 🎉, 마감된 날은 🔒 알림을 실제로 보내봅니다 (감시 상태는 그대로)
 4. 이후 5분마다 자동 실행 (GitHub 사정에 따라 5~15분 지연될 수 있음)
 
 11월이 끝나면 Actions 탭에서 workflow를 **Disable** 하세요.

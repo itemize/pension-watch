@@ -6,9 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "실행 모드 (빈칸=일반, --test=현재 상태 전송)"
+        description: "실행 모드 (normal=일반, --test=현재 상태 전송, --demo=지정 날짜로 알림 테스트)"
+        type: choice
+        options: [normal, --test, --demo]
+        default: normal
+      dates:
+        description: "--demo 전용: 체크인 날짜 (쉼표 구분, 예: 2026-11-03,2026-11-07)"
         required: false
-        default: ""
+        default: "2026-11-03,2026-11-07"
 
 concurrency:
   group: pension-watch
@@ -37,8 +42,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           MODE: ${{ github.event.inputs.mode }}
+          DATES: ${{ github.event.inputs.dates }}
         run: |
-          if [ "$MODE" = "--test" ]; then python check.py --test; else python check.py; fi
+          case "$MODE" in
+            --test) python check.py --test ;;
+            --demo) python check.py --demo "$DATES" ;;
+            *) python check.py ;;
+          esac
 
       - uses: actions/cache/save@v4
         if: always() && hashFiles('state.json') != ''

@@ -4,6 +4,8 @@
   python check.py           # 확인 후, 새로 열린 날짜만 알림
   python check.py --test    # 현재 상태를 텔레그램으로 전송 (연결 확인용)
   python check.py --dry     # 텔레그램 없이 콘솔 출력만
+  python check.py --demo 2026-11-03,2026-11-07
+                            # 지정 날짜로 🎉/🔒 알림을 실제 전송 (감시 상태는 그대로)
 
 환경변수: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 """
@@ -128,6 +130,16 @@ def fmt_date(iso):
     return f"{d.month}/{d.day}({'월화수목금토일'[d.weekday()]})"
 
 
+def notify_changes(cfg, prev, result, notify):
+    """이전 상태와 비교해 열림(🎉)/다시 마감(🔒)을 알림."""
+    for k, r in result.items():
+        stay = f"{fmt_date(r['checkin'])} → {fmt_date(r['checkout'])} · {r['room']}"
+        if r["available"] and not prev.get(k):
+            notify(f"🎉 [{cfg['name']}] 예약 가능!\n{stay}\n{r['url']}")
+        elif not r["available"] and prev.get(k):
+            notify(f"🔒 [{cfg['name']}] 다시 마감됐어요\n{stay}")
+
+
 def load_state():
     try:
         return json.loads(STATE_PATH.read_text(encoding="utf-8"))
@@ -139,6 +151,17 @@ def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
     notify = print if mode == "--dry" else send_telegram
     cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+
+    if mode == "--demo":
+        # 지정한 날짜의 현재 상태와 반대였다고 가정해 실제 알림을 보냄 (state.json은 건드리지 않음)
+        if len(sys.argv) < 3 or not sys.argv[2].strip():
+            sys.exit("사용법: python check.py --demo 2026-11-03,2026-11-07")
+        cfg["checkinDates"] = [d.strip() for d in sys.argv[2].split(",") if d.strip()]
+        cfg["name"] = f"테스트·{cfg['name']}"
+        result = check(cfg)
+        notify_changes(cfg, {k: not r["available"] for k, r in result.items()}, result, send_telegram)
+        return
+
     state = load_state()
 
     try:
@@ -169,13 +192,7 @@ def main():
     if mode == "--test":
         return  # 상태를 저장하지 않아야 다음 정기 실행에서 알림이 빠지지 않음
 
-    prev = state.get("available", {})
-    for k, r in result.items():
-        stay = f"{fmt_date(r['checkin'])} → {fmt_date(r['checkout'])} · {r['room']}"
-        if r["available"] and not prev.get(k):
-            notify(f"🎉 [{cfg['name']}] 예약 가능!\n{stay}\n{r['url']}")
-        elif not r["available"] and prev.get(k):
-            notify(f"🔒 [{cfg['name']}] 다시 마감됐어요\n{stay}")
+    notify_changes(cfg, state.get("available", {}), result, notify)
 
     state["available"] = {k: r["available"] for k, r in result.items()}
     state["checkedAt"] = datetime.now(KST).isoformat(timespec="seconds")
