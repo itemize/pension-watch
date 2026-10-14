@@ -10,6 +10,7 @@
 
 환경변수: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 """
+import html
 import json
 import os
 import sys
@@ -114,14 +115,15 @@ def check(cfg):
     return result
 
 
-def send_telegram(text):
+def send_telegram(text, parse_mode=None):
     token = os.environ.get("TELEGRAM_BOT_TOKEN")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
         raise RuntimeError("TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 환경변수가 없습니다.")
-    body = urllib.parse.urlencode({
-        "chat_id": chat_id, "text": text, "disable_web_page_preview": "true",
-    }).encode()
+    fields = {"chat_id": chat_id, "text": text, "disable_web_page_preview": "true"}
+    if parse_mode:
+        fields["parse_mode"] = parse_mode
+    body = urllib.parse.urlencode(fields).encode()
     with urllib.request.urlopen(f"https://api.telegram.org/bot{token}/sendMessage", body, timeout=20) as res:
         json.load(res)
 
@@ -158,24 +160,35 @@ def month_summary(cfg):
     days = [(start + timedelta(days=n)).isoformat() for n in range((last - start).days + 1)]
     watched = set(cfg["checkinDates"])
     items = fetch_items(cfg)
-    lines = [f"📅 [{cfg['name']}] {month}월 예약 현황",
-             f"{now.month}/{now.day} {now:%H:%M} 기준"]
+    esc = html.escape
+    lines = [f"📅 [{esc(cfg['name'])}] {month}월 예약 현황",
+             f"{now.month}/{now.day} {now:%H:%M} 기준 · <b>[숫자]</b> = 예약 가능"]
     for item in items:
         daily = fetch_daily(cfg, item["bizItemId"], days[0], days[-1])
-        open_days = [d for d in days
-                     if not item.get("isClosedBooking") and night_available(daily.get(d))]
+        open_days = {d for d in days
+                     if not item.get("isClosedBooking") and night_available(daily.get(d))}
         if len(items) > 1:
-            lines.append(f"\n[{item['name']}]")
+            lines.append(f"\n<b>{esc(item['name'])}</b>")
         lines.append(f"\n🟢 예약 가능 {len(open_days)}일 / 마감 {len(days) - len(open_days)}일")
-        # 주(월~일) 단위로 한 줄씩
-        weeks = {}
-        for d in open_days:
-            weeks.setdefault(date.fromisoformat(d).isocalendar()[:2], []).append(fmt_date(d))
-        lines += [" ".join(w) for w in weeks.values()] or ["(없음)"]
+        lines.append("<pre>" + calendar_grid(first, last, open_days) + "</pre>")
         mine = [f"{'🟢' if d in open_days else '⚪'} {fmt_date(d)}" for d in days if d in watched]
         if mine:
-            lines.append("\n감시 중인 날짜: " + "  ".join(mine))
+            lines.append("감시 중인 날짜: " + "  ".join(mine))
     return "\n".join(lines)
+
+
+def calendar_grid(first, last, open_days):
+    """월~일 달력. 칸 너비 4, 예약 가능일은 [n]."""
+    rows = [" 월  화  수  목  금  토  일"]
+    cells = ["    "] * first.weekday()
+    d = first
+    while d <= last:
+        n = str(d.day)
+        cells.append((f"[{n}]" if d.isoformat() in open_days else f" {n} ").ljust(4))
+        d += timedelta(days=1)
+    for i in range(0, len(cells), 7):
+        rows.append("".join(cells[i:i + 7]).rstrip())
+    return "\n".join(rows)
 
 
 def load_state():
@@ -187,7 +200,7 @@ def load_state():
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
-    notify = print if mode == "--dry" else send_telegram
+    notify = (lambda text, parse_mode=None: print(text)) if mode == "--dry" else send_telegram
     cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
     if mode == "--demo":
@@ -201,7 +214,11 @@ def main():
         return
 
     if mode == "--summary":
-        notify(month_summary(cfg) or f"{cfg['summaryMonth']}이(가) 이미 지났습니다.")
+        msg = month_summary(cfg)
+        if msg:
+            notify(msg, "HTML")
+        else:
+            notify(f"{cfg['summaryMonth']}이(가) 이미 지났습니다.")
         return
 
     state = load_state()
@@ -244,7 +261,7 @@ def main():
         try:
             msg = month_summary(cfg)
             if msg:
-                notify(msg)
+                notify(msg, "HTML")
             state["lastSummary"] = today
         except Exception as e:
             print(f"월간 현황 전송 실패: {e}", file=sys.stderr)
