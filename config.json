@@ -4,5 +4,7 @@
   "businessTypeId": 3,
   "bizItemIds": "all",
   "checkinDates": ["2026-11-07", "2026-11-14", "2026-11-21", "2026-11-28"],
-  "nights": 1
+  "nights": 1,
+  "summaryMonth": "2026-11",
+  "summaryHour": 9
 }

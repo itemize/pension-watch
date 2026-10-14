@@ -6,6 +6,7 @@
   python check.py --dry     # 텔레그램 없이 콘솔 출력만
   python check.py --demo 2026-11-03,2026-11-07
                             # 지정 날짜로 🎉/🔒 알림을 실제 전송 (감시 상태는 그대로)
+  python check.py --summary # 월간 예약 현황을 지금 바로 전송 (일반 실행 시엔 하루 1회 자동)
 
 환경변수: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 """
@@ -145,6 +146,38 @@ def notify_changes(cfg, prev, result, notify):
             notify(f"🔒 [{cfg['name']}] 다시 마감됐어요\n{stay}")
 
 
+def month_summary(cfg):
+    """summaryMonth(YYYY-MM)의 남은 날짜별 1박 예약 현황 메시지. 달이 지났으면 None."""
+    now = datetime.now(KST)
+    year, month = map(int, cfg["summaryMonth"].split("-"))
+    first = date(year, month, 1)
+    last = (first + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    start = max(first, now.date())
+    if start > last:
+        return None
+    days = [(start + timedelta(days=n)).isoformat() for n in range((last - start).days + 1)]
+    watched = set(cfg["checkinDates"])
+    items = fetch_items(cfg)
+    lines = [f"📅 [{cfg['name']}] {month}월 예약 현황",
+             f"{now.month}/{now.day} {now:%H:%M} 기준"]
+    for item in items:
+        daily = fetch_daily(cfg, item["bizItemId"], days[0], days[-1])
+        open_days = [d for d in days
+                     if not item.get("isClosedBooking") and night_available(daily.get(d))]
+        if len(items) > 1:
+            lines.append(f"\n[{item['name']}]")
+        lines.append(f"\n🟢 예약 가능 {len(open_days)}일 / 마감 {len(days) - len(open_days)}일")
+        # 주(월~일) 단위로 한 줄씩
+        weeks = {}
+        for d in open_days:
+            weeks.setdefault(date.fromisoformat(d).isocalendar()[:2], []).append(fmt_date(d))
+        lines += [" ".join(w) for w in weeks.values()] or ["(없음)"]
+        mine = [f"{'🟢' if d in open_days else '⚪'} {fmt_date(d)}" for d in days if d in watched]
+        if mine:
+            lines.append("\n감시 중인 날짜: " + "  ".join(mine))
+    return "\n".join(lines)
+
+
 def load_state():
     try:
         return json.loads(STATE_PATH.read_text(encoding="utf-8"))
@@ -165,6 +198,10 @@ def main():
         cfg["name"] = f"테스트·{cfg['name']}"
         result = check(cfg)
         notify_changes(cfg, {k: not r["available"] for k, r in result.items()}, result, send_telegram)
+        return
+
+    if mode == "--summary":
+        notify(month_summary(cfg) or f"{cfg['summaryMonth']}이(가) 이미 지났습니다.")
         return
 
     state = load_state()
@@ -198,6 +235,19 @@ def main():
         return  # 상태를 저장하지 않아야 다음 정기 실행에서 알림이 빠지지 않음
 
     notify_changes(cfg, state.get("available", {}), result, notify)
+
+    # 하루 한 번, summaryHour 이후 첫 실행에서 월간 현황 전송 (실패해도 감시는 계속)
+    now = datetime.now(KST)
+    today = now.date().isoformat()
+    if cfg.get("summaryMonth") and now.hour >= cfg.get("summaryHour", 9) \
+            and state.get("lastSummary") != today:
+        try:
+            msg = month_summary(cfg)
+            if msg:
+                notify(msg)
+            state["lastSummary"] = today
+        except Exception as e:
+            print(f"월간 현황 전송 실패: {e}", file=sys.stderr)
 
     state["available"] = {k: r["available"] for k, r in result.items()}
     state["checkedAt"] = datetime.now(KST).isoformat(timespec="seconds")
