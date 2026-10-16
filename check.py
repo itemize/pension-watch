@@ -178,9 +178,9 @@ def month_summary(cfg):
 
 
 def calendar_grid(first, last, open_days):
-    """월~일 달력. 칸 너비 4, 예약 가능일은 [n]."""
-    rows = [" 월  화  수  목  금  토  일"]
-    cells = ["    "] * first.weekday()
+    """일~토 달력. 칸 너비 4, 예약 가능일은 [n]."""
+    rows = [" 일  월  화  수  목  금  토"]
+    cells = ["    "] * ((first.weekday() + 1) % 7)  # 일요일=0
     d = first
     while d <= last:
         n = str(d.day)
