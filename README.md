@@ -4,7 +4,7 @@
 GitHub Actions에서 돌아가므로 PC를 꺼도 동작합니다. 추가 패키지 없이 Python 표준 라이브러리만 사용합니다.
 
 - 대상: 오픈세서미 (네이버 플레이스 1404202432 / 예약 bizId 885041)
-- 날짜: 2026년 11월 토요일 체크인 1박 (11/7, 11/14, 11/21, 11/28)
+- 날짜: 2026년 11~12월 토요일 체크인 1박
 
 ## 동작
 - `m.booking.naver.com/graphql`의 `schedule` 쿼리로 날짜별 재고(`stock - bookingCount`)와 영업/판매 여부를 확인
@@ -22,8 +22,8 @@ GitHub Actions에서 돌아가므로 PC를 꺼도 동작합니다. 추가 패키
 | `checkinDates` | 감시할 체크인 날짜 목록 |
 | `nights` | 숙박일 수 (2 이상이면 연속된 모든 밤이 비어야 알림) |
 | `bizItemIds` | `"all"` 또는 객실 ID 목록 (예: `["4999614"]`) |
-| `summaryMonth` | 월간 현황을 보낼 달 (`YYYY-MM`). 빼면 월간 현황을 보내지 않음 |
-| `summaryHour` | 월간 현황을 보내기 시작하는 시각 (한국 시간, 기본 9) |
+| `summaryMonths` | 월간 현황을 보낼 달 목록 (`["YYYY-MM", ...]`). 빼면 월간 현황을 보내지 않음 |
+| `summaryHour` | 월간 현황을 보내기 시작하는 시각 (한국 시간) |
 
 ## GitHub에 올리기
 1. **공개(public)** 저장소를 만들고 이 폴더를 push
@@ -36,7 +36,7 @@ GitHub Actions에서 돌아가므로 PC를 꺼도 동작합니다. 추가 패키
    - mode `--summary`로 실행하면 📅 월간 예약 현황을 바로 보냅니다
 4. 이후 5분마다 자동 실행 (GitHub 사정에 따라 5~15분 지연될 수 있음)
 
-11월이 끝나면 Actions 탭에서 workflow를 **Disable** 하세요.
+12월이 끝나면 Actions 탭에서 workflow를 **Disable** 하세요.
 
 ## 로컬 실행
 ```

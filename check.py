@@ -148,43 +148,57 @@ def notify_changes(cfg, prev, result, notify):
             notify(f"🔒 [{cfg['name']}] 다시 마감됐어요\n{stay}")
 
 
+def summary_months(cfg):
+    m = cfg.get("summaryMonths") or cfg.get("summaryMonth") or []
+    return [m] if isinstance(m, str) else m
+
+
 def month_summary(cfg):
-    """summaryMonth(YYYY-MM)의 남은 날짜별 1박 예약 현황 메시지. 달이 지났으면 None."""
+    """summaryMonths(YYYY-MM 목록)의 남은 날짜별 1박 예약 현황 메시지. 모두 지났으면 None."""
     now = datetime.now(KST)
-    year, month = map(int, cfg["summaryMonth"].split("-"))
-    first = date(year, month, 1)
-    last = (first + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-    start = max(first, now.date())
-    if start > last:
+    months = []
+    for ym in summary_months(cfg):
+        year, month = map(int, ym.split("-"))
+        first = date(year, month, 1)
+        last = (first + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        start = max(first, now.date())
+        if start <= last:
+            months.append((first, last, start))
+    if not months:
         return None
-    days = [(start + timedelta(days=n)).isoformat() for n in range((last - start).days + 1)]
     watched = set(cfg["checkinDates"])
     items = fetch_items(cfg)
     esc = html.escape
-    lines = [f"📅 [{esc(cfg['name'])}] {month}월 예약 현황",
+    title = "·".join(f"{f.month}월" for f, _, _ in months)
+    lines = [f"📅 [{esc(cfg['name'])}] {title} 예약 현황",
              f"{now.month}/{now.day} {now:%H:%M} 기준 · <b>[숫자]</b> = 예약 가능"]
     for item in items:
-        daily = fetch_daily(cfg, item["bizItemId"], days[0], days[-1])
-        open_days = {d for d in days
-                     if not item.get("isClosedBooking") and night_available(daily.get(d))}
         if len(items) > 1:
             lines.append(f"\n<b>{esc(item['name'])}</b>")
-        lines.append(f"\n🟢 예약 가능 {len(open_days)}일 / 마감 {len(days) - len(open_days)}일")
-        lines.append("<pre>" + calendar_grid(first, last, open_days) + "</pre>")
-        mine = [f"{'🟢' if d in open_days else '⚪'} {fmt_date(d)}" for d in days if d in watched]
+        daily = fetch_daily(cfg, item["bizItemId"], months[0][2].isoformat(), months[-1][1].isoformat())
+        all_open = set()
+        for first, last, start in months:
+            days = [(start + timedelta(days=n)).isoformat() for n in range((last - start).days + 1)]
+            open_days = {d for d in days
+                         if not item.get("isClosedBooking") and night_available(daily.get(d))}
+            all_open |= open_days
+            lines.append(f"\n<b>{first.month}월</b> 🟢 예약 가능 {len(open_days)}일 / 마감 {len(days) - len(open_days)}일")
+            lines.append("<pre>" + calendar_grid(first, last, open_days) + "</pre>")
+        mine = [f"{'🟢' if d in all_open else '⚪'} {fmt_date(d)}"
+                for d in sorted(watched) if d >= months[0][2].isoformat()]
         if mine:
-            lines.append("감시 중인 날짜: " + "  ".join(mine))
+            lines.append("감시 중인 날짜:\n" + "  ".join(mine))
     return "\n".join(lines)
 
 
 def calendar_grid(first, last, open_days):
-    """일~토 달력. 칸 너비 4, 예약 가능일은 [n]."""
+    """일~토 달력. 칸 너비 4, 날짜 오른쪽 정렬, 예약 가능일은 [n]."""
     rows = [" 일  월  화  수  목  금  토"]
     cells = ["    "] * ((first.weekday() + 1) % 7)  # 일요일=0
     d = first
     while d <= last:
         n = str(d.day)
-        cells.append((f"[{n}]" if d.isoformat() in open_days else f" {n} ").ljust(4))
+        cells.append((f"[{n}]" if d.isoformat() in open_days else f"{n} ").rjust(4))
         d += timedelta(days=1)
     for i in range(0, len(cells), 7):
         rows.append("".join(cells[i:i + 7]).rstrip())
@@ -218,7 +232,7 @@ def main():
         if msg:
             notify(msg, "HTML")
         else:
-            notify(f"{cfg['summaryMonth']}이(가) 이미 지났습니다.")
+            notify("현황을 보낼 달이 모두 지났습니다.")
         return
 
     state = load_state()
@@ -256,7 +270,7 @@ def main():
     # 하루 한 번, summaryHour 이후 첫 실행에서 월간 현황 전송 (실패해도 감시는 계속)
     now = datetime.now(KST)
     today = now.date().isoformat()
-    if cfg.get("summaryMonth") and now.hour >= cfg.get("summaryHour", 9) \
+    if summary_months(cfg) and now.hour >= cfg.get("summaryHour", 9) \
             and state.get("lastSummary") != today:
         try:
             msg = month_summary(cfg)
