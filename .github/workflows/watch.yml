@@ -11,9 +11,9 @@ on:
         options: [normal, --test, --demo, --summary]
         default: normal
       dates:
-        description: "--demo 전용: 체크인 날짜 (쉼표 구분, 예: 2026-11-03,2026-11-07)"
+        description: "--demo 전용: 체크인 날짜 (쉼표 구분, 예: 2026-12-01,2026-12-05)"
         required: false
-        default: "2026-11-03,2026-11-07"
+        default: "2026-12-01,2026-12-05"
 
 concurrency:
   group: pension-watch
