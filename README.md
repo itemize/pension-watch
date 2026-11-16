@@ -1,6 +1,6 @@
 # pension-watch
 
-숙소의 취소분(빈 날짜)을 5분마다 확인해 텔레그램으로 알려줍니다.
+숙소의 취소분(빈 날짜)을 하루 3번(한국 시간 05·13·21시) 확인해 텔레그램으로 알려줍니다.
 GitHub Actions에서 돌아가므로 PC를 꺼도 동작합니다. 추가 패키지 없이 Python 표준 라이브러리만 사용합니다.
 
 - 오픈세서미 (네이버 플레이스 1404202432 / 예약 bizId 885041) — 2026년 11~12월 토요일 체크인 1박
@@ -38,14 +38,14 @@ GitHub Actions에서 돌아가므로 PC를 꺼도 동작합니다. 추가 패키
 
 ## GitHub에 올리기
 1. **공개(public)** 저장소를 만들고 이 폴더를 push
-   - 비공개 저장소는 Actions 무료 한도(월 2,000분)를 5분 주기로는 초과합니다. 토큰은 Secrets에 들어가므로 공개해도 노출되지 않습니다.
+   - 토큰은 Secrets에 들어가므로 공개해도 노출되지 않습니다.
 2. Settings → Secrets and variables → Actions → New repository secret
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
 3. Actions 탭 → `pension-watch` → **Run workflow**, mode에서 `--test` 선택 → 텔레그램에 현재 상태가 오면 성공
    - mode `--demo` + dates(예: `2026-12-05,2026-12-19`)로 실행하면 지정 날짜 중 열린 날은 🎉, 마감된 날은 🔒 알림을 실제로 보내봅니다 (감시 상태는 그대로)
    - mode `--summary`로 실행하면 📅 월간 예약 현황을 바로 보냅니다
-4. 이후 5분마다 자동 실행 (GitHub 사정에 따라 5~15분 지연될 수 있음)
+4. 이후 매일 한국 시간 05:03, 13:03, 21:03에 자동 실행 (`.github/workflows/watch.yml`의 `cron`, UTC 기준). GitHub 사정에 따라 수십 분 늦어지거나 가끔 건너뛸 수 있음
 
 12월이 끝나면 Actions 탭에서 workflow를 **Disable** 하세요.
 
