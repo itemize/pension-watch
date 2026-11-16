@@ -11,9 +11,9 @@ on:
         options: [normal, --test, --demo, --summary]
         default: normal
       dates:
-        description: "--demo 전용: 체크인 날짜 (쉼표 구분, 예: 2026-12-01,2026-12-05)"
+        description: "--demo 전용: 체크인 날짜 (쉼표 구분, 예: 2026-12-05,2026-12-19)"
         required: false
-        default: "2026-12-01,2026-12-05"
+        default: "2026-12-05,2026-12-19"
 
 concurrency:
   group: pension-watch
@@ -22,7 +22,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
 

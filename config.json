@@ -1,10 +1,27 @@
 {
-  "name": "오픈세서미",
-  "businessId": "885041",
-  "businessTypeId": 3,
-  "bizItemIds": "all",
-  "checkinDates": ["2026-11-07", "2026-11-14", "2026-11-21", "2026-11-28", "2026-12-05", "2026-12-12", "2026-12-19", "2026-12-26"],
-  "nights": 1,
-  "summaryMonths": ["2026-11", "2026-12"],
-  "summaryHour": 6
+  "summaryHour": 6,
+  "targets": [
+    {
+      "id": "opensesame",
+      "type": "naver",
+      "name": "오픈세서미",
+      "businessId": "885041",
+      "businessTypeId": 3,
+      "bizItemIds": "all",
+      "checkinDates": ["2026-11-07", "2026-11-14", "2026-11-21", "2026-11-28", "2026-12-05", "2026-12-12", "2026-12-19", "2026-12-26"],
+      "nights": 1,
+      "summaryMonths": ["2026-11", "2026-12"]
+    },
+    {
+      "id": "kensington-gyeongju",
+      "type": "kensington",
+      "name": "켄싱턴 경주",
+      "branCd": "RKT02",
+      "rooms": {"62DMV": "그랜드 스위트 마운틴뷰(클린룸)"},
+      "checkinDates": ["2026-12-05", "2026-12-12", "2026-12-19", "2026-12-26"],
+      "priorityDates": ["2026-12-19"],
+      "nights": 1,
+      "summaryMonths": ["2026-12"]
+    }
+  ]
 }
